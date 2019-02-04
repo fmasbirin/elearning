@@ -1,0 +1,27 @@
+FROM ubuntu:latest
+
+EXPOSE 25/tcp 465/tcp 587/tcp
+
+VOLUME /var/log/postfix
+VOLUME /var/spool/postfix
+
+ENV MAILNAME mail.example.com
+ENV MY_NETWORKS 10.0.0.0/8 172.16.0.0/16 127.0.0.0/8
+ENV MY_DESTINATION esaunggul.ac.id, localhost.localdomain, localhost
+ENV ROOT_ALIAS ibrani.beny@gmail.com
+
+RUN echo postfix postfix/main_mailer_type string "'Internet Site'" | debconf-set-selections && \
+ echo postfix postfix/mynetworks string "127.0.0.0/8" | debconf-set-selections && \
+ echo postfix postfix/mailname string elearning.esaunggul.ac.id | debconf-set-selections
+
+RUN apt-get update -q -q && \
+ apt-get --yes --force-yes install postfix && \
+ apt-get --yes --force-yes --no-install-recommends install rsyslog
+
+# We disable IPv6 for now, IPv6 is available in Docker even if the host does not have IPv6 connectivity.
+RUN \
+ postconf -e mydestination="esaunggul.ac.id, localhost.localdomain, localhost" && \
+ postconf -e smtpd_banner='$myhostname ESMTP $mail_name' && \
+ postconf -# myhostname && \
+ postconf -e inet_protocols=ipv4 && \
+ sed -i 's/\/var\/log\/mail/\/var\/log\/postfix\/mail/' /etc/rsyslog.d/50-default.conf
